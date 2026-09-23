@@ -58,13 +58,9 @@ def recommendations(payload: RecommendationRequest) -> dict:
             "max_hours": item["max_hours"],
             "synthetic": item["synthetic"],
             "score": min(100, item["score"]),
+            "score_breakdown": item["score_breakdown"],
             "explanation": item["explanation"],
-            "matches": [
-                "В бюджете" if item["price_from_kzt"] is not None else "Цена уточняется",
-                payload.event_type,
-                *([payload.language] if payload.language else []),
-                *([f"До {item['max_hours']:g} часов"] if item["max_hours"] is not None else []),
-            ],
+            "matches": item["matches"],
         })
 
     return {
