@@ -5,7 +5,10 @@ import csv
 import json
 from pathlib import Path
 
-from db import DEFAULT_DB_PATH, initialize_database, connect
+try:  # Supports both `python backend/import_dataset.py` and module execution.
+    from .db import DEFAULT_DB_PATH, initialize_database, connect
+except ImportError:  # pragma: no cover - script mode
+    from db import DEFAULT_DB_PATH, initialize_database, connect
 
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -60,4 +63,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
