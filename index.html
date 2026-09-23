@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fc">
+  <meta name="description" content="Умный подбор подрядчиков для вашего мероприятия">
+  <title>EventMatch AI — подрядчики для вашего события</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="EventMatch AI — главная">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 9.3 17 19 7"/></svg></span>
+      <span>eventmatch<span class="brand-ai">.ai</span></span>
+    </a>
+    <div class="header-note"><span class="status-dot"></span> Подбор на основе ваших условий</div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="sparkle" aria-hidden="true">✳</span> EVENT PLANNING, MADE SIMPLE</div>
+        <h1 id="hero-title">Ваше событие.<br><span>Идеальная команда.</span></h1>
+        <p class="hero-description">Подберём event-подрядчиков под ваш формат, бюджет и дату — и объясним, почему они подходят.</p>
+        <div class="hero-proof"><span class="proof-icon" aria-hidden="true">✓</span> До 3 точных рекомендаций <span class="proof-divider"></span> По всему Казахстану</div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+        <div class="art-card art-card-main"><span class="art-card-kicker">ВАШЕ СОБЫТИЕ</span><span class="art-card-title">Незабываемо<br>до последней детали</span><span class="art-card-line"></span><span class="art-card-meta">Ваш стиль. Ваша команда.</span></div>
+        <div class="art-card art-card-float"><span class="float-check">✓</span><span><strong>Идеальное совпадение</strong><small>Всё сходится</small></span><span class="float-percent">98%</span></div>
+        <span class="art-spark spark-a">✳</span><span class="art-spark spark-b">✦</span>
+      </div>
+    </section>
+
+    <section class="search-panel" aria-labelledby="form-title">
+      <div class="panel-heading">
+        <div class="heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16M7 12h10m-7 7h4"/><circle cx="8" cy="5" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="10" cy="19" r="1.5"/></svg></div>
+        <div><div class="section-kicker">ШАГ 01 · ДЕТАЛИ СОБЫТИЯ</div><h2 id="form-title">С чего начнём?</h2><p>Расскажите о событии — мы найдём тех, кто подойдёт.</p></div>
+        <span class="required-note"><span>*</span> Обязательные поля</span>
+      </div>
+      <form id="search-form" novalidate>
+        <div class="form-grid">
+          <div class="field"><label for="city">Город <span>*</span></label><div class="control-wrap select-wrap"><select id="city" name="city" required><option value="">Выберите город</option><option>Астана</option><option>Алматы</option><option>Зарубежье</option></select></div><small class="field-error" data-error="city"></small></div>
+          <div class="field"><label for="date">Дата мероприятия <span>*</span></label><div class="control-wrap"><input id="date" name="date" type="date" min="2026-09-23" max="2026-12-31" required></div><small class="field-hint">Выберите дату с 23 сентября по 31 декабря 2026</small><small class="field-error" data-error="date"></small></div>
+          <div class="field"><label for="event-format">Тип мероприятия <span>*</span></label><div class="control-wrap select-wrap"><select id="event-format" name="event_format" required><option value="">Например, свадьба</option><option value="свадьба">Свадьба</option><option value="той">Той</option><option value="корпоратив">Корпоратив</option><option value="конференция">Конференция</option><option value="юбилей">Юбилей</option><option value="день рождения">День рождения</option></select></div><small class="field-error" data-error="event_format"></small></div>
+          <div class="field"><label for="category">Категория подрядчика <span>*</span></label><div class="control-wrap select-wrap"><select id="category" name="category" required><option value="">Кто вам нужен?</option><option>Банкетный зал</option><option>Ведущий</option><option>Ведущий церемонии</option><option>Видеограф</option><option>Декоратор</option><option>Загородная площадка</option><option>Инструменталист</option><option>Лайв-бэнд</option><option>Национальный ансамбль</option><option>Отель</option><option>Подарки и сувениры</option><option>Ресторан</option><option>Танцевальный коллектив</option><option>Флорист</option><option>Фото и видеобудки</option><option>Фотограф</option><option>Шоу-программа</option></select></div><small class="field-error" data-error="category"></small></div>
+          <div class="field"><label for="budget">Бюджет <span>*</span></label><div class="control-wrap budget-wrap"><input id="budget" name="budget" type="number" min="1" step="10000" placeholder="Например, 500 000" required><span class="currency">₸</span></div><small class="field-hint">Максимальный бюджет на подрядчика</small><small class="field-error" data-error="budget"></small></div>
+          <div class="field"><label for="duration">Длительность <span class="optional">НЕОБЯЗАТЕЛЬНО</span></label><div class="control-wrap select-wrap"><select id="duration" name="duration"><option value="">Неважно</option><option value="1">1 час</option><option value="2">2 часа</option><option value="3">3 часа</option><option value="4">4 часа</option><option value="5">5 часов</option><option value="6">6 часов</option><option value="8">8 часов</option><option value="10">10 часов</option><option value="12">12 часов</option></select></div></div>
+          <div class="field"><label for="language">Язык <span class="optional">НЕОБЯЗАТЕЛЬНО</span></label><div class="control-wrap select-wrap"><select id="language" name="language"><option value="">Неважно</option><option value="русский">Русский</option><option value="казахский">Казахский</option><option value="английский">Английский</option></select></div></div>
+        </div>
+        <div class="form-footer"><p class="privacy-note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 16 4v5c0 4-2.5 7-6 9-3.5-2-6-5-6-9V4l6-2Z"/><path d="m7.5 9.5 1.7 1.7 3.5-3.7"/></svg> Подбор учитывает только заданные вами параметры</p><button class="submit-button" id="submit-button" type="submit"><span>Подобрать подрядчиков</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></button></div>
+      </form>
+    </section>
+
+    <section class="results-section" id="results" aria-live="polite" aria-busy="false" hidden>
+      <div class="results-heading"><div><div class="section-kicker">ШАГ 02 · ВАШИ РЕКОМЕНДАЦИИ</div><h2 id="results-title">Подходящие подрядчики</h2><p id="results-subtitle"></p></div><span class="results-count" id="results-count"></span></div>
+      <div class="results-content" id="results-content"></div>
+    </section>
+    <footer class="site-footer"><a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 9.3 17 19 7"/></svg></span><span>eventmatch<span class="brand-ai">.ai</span></span></a><span>Хорошие события начинаются с хороших людей.</span><span>© 2026 EventMatch AI</span></footer>
+  </main>
+</body>
+</html>
