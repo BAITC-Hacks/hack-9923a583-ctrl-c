@@ -1,9 +1,23 @@
 """Hard eligibility filters and point-based ranking."""
 
 import json
+import re
 
 
-REJECTION_LABELS = {"busy": "заняты на выбранную дату"}
+MIN_RECOMMENDATION_RATIO = 0.25
+PRICE_STEP_PERCENT = 3
+MAX_BUDGET_OVERRUN_PERCENT = 30
+REJECTION_LABELS = {
+    "busy": "заняты на выбранную дату",
+    "format": "не работают с выбранным форматом",
+    "budget": "превышают бюджет более чем на 30%",
+    "low_score": "не прошли порог 25% баллов",
+}
+
+
+def minimum_score(max_score: int) -> int:
+    """Use a whole-point threshold; e.g. 25% of 27 is 6 points."""
+    return int(max_score * MIN_RECOMMENDATION_RATIO)
 
 
 def parse_vendor(row) -> dict:
@@ -14,9 +28,15 @@ def parse_vendor(row) -> dict:
 
 
 def rejection_reason(vendor: dict, request: dict) -> str | None:
-    """Only city/category (selected before this call) and date are hard filters."""
+    """Apply hard filters after city/category have selected the candidate pool."""
     if request["date"] in vendor["busy_dates"]:
         return "busy"
+    if request["event_type"] not in vendor["event_formats"]:
+        return "format"
+    price = vendor["price_from_kzt"]
+    budget = request["budget_kzt"]
+    if price is not None and price * 100 > budget * (100 + MAX_BUDGET_OVERRUN_PERCENT):
+        return "budget"
     return None
 
 
@@ -30,8 +50,8 @@ def score_candidate(vendor: dict, request: dict) -> dict:
     max_score = 3
     matches = ["Город", "Категория", "Свободен на дату"]
 
-    # Budget is a preference score, not a hard filter. Every 10% above budget
-    # costs one point. Prices at or below budget all receive the same 10 points.
+    # Prices at or below budget all receive the same 10 points. A permitted
+    # overrun (up to 30%) loses one point for each started 3% band.
     price = vendor["price_from_kzt"]
     budget = request["budget_kzt"]
     max_score += 10
@@ -41,9 +61,11 @@ def score_candidate(vendor: dict, request: dict) -> dict:
         breakdown["budget"] = 10
         matches.append("В бюджете")
     else:
-        step = max(1, budget * 0.10)
-        overspend_steps = int((price - budget + step - 1) // step)
-        breakdown["budget"] = max(-10, 10 - overspend_steps)
+        overspend_steps = int(
+            ((price - budget) * 100 + budget * PRICE_STEP_PERCENT - 1)
+            // (budget * PRICE_STEP_PERCENT)
+        )
+        breakdown["budget"] = max(0, 10 - overspend_steps)
 
     requested_hours = request.get("duration_hours")
     if requested_hours is not None:
@@ -56,12 +78,9 @@ def score_candidate(vendor: dict, request: dict) -> dict:
             shortfall = requested_hours - capacity
             breakdown["duration"] = max(-10, round(10 - 2.5 * shortfall))
 
-    max_score += 3
-    if request["event_type"] in vendor["event_formats"]:
-        breakdown["event_format"] = 3
-        matches.append("Формат подходит")
-    else:
-        breakdown["event_format"] = -1
+    max_score += 1
+    breakdown["event_format"] = 1
+    matches.append("Формат подходит")
 
     if request.get("language"):
         max_score += 3
@@ -111,10 +130,7 @@ def _explanation(vendor: dict, request: dict, score: dict) -> str:
             f"({score['budget']:+d} баллов за бюджет)"
         ).replace(",", " ")
 
-    if request["event_type"] in vendor["event_formats"]:
-        format_text = f"берёт формат «{request['event_type']}» (+3)"
-    else:
-        format_text = f"не указал формат «{request['event_type']}» (−1)"
+    format_text = f"берёт формат «{request['event_type']}» ({score['event_format']:+d})"
     first_sentence = f"{price_text}; {format_text}."
 
     notes = []
@@ -127,7 +143,7 @@ def _explanation(vendor: dict, request: dict, score: dict) -> str:
     if hours is not None:
         capacity = vendor["max_hours"]
         if capacity is None:
-            notes.append(f"время присутствия не ограничено (+10 за длительность)")
+            notes.append("работа не привязана ко времени присутствия (+10 за длительность)")
         elif capacity >= hours:
             notes.append(f"лимит {capacity:g} ч. покрывает запрос {hours:g} ч. (+10 за длительность)")
         else:
@@ -139,6 +155,15 @@ def _explanation(vendor: dict, request: dict, score: dict) -> str:
         notes.append("синтетический демо-профиль")
     if vendor["price_imputed"]:
         notes.append("цена оценочная")
-    if not notes:
-        notes.append(f"свободен на выбранную дату в городе {vendor['city']}")
-    return first_sentence + " " + "; ".join(notes).capitalize() + "."
+    notes.append(f"свободен на дату {request['date']}")
+    description = " ".join(vendor["description"].split())
+    if description:
+        # Quote an actual profile fact, retaining spelling and proper names.
+        # Prefer a complete sentence; truncate long ones at a word boundary.
+        excerpt = re.split(r"(?<=[.!?])\s+", description, maxsplit=1)[0]
+        if len(excerpt) > 180:
+            excerpt = excerpt[:180].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+        excerpt = excerpt.rstrip(".!?")
+        notes.append(f"в описании: «{excerpt}»")
+    details = "; ".join(notes)
+    return first_sentence + " " + details[0].upper() + details[1:] + "."

@@ -15,8 +15,10 @@ function escapeHTML(value) {
 }
 
 function formatPrice(value) {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return "Цена уточняется";
+  if (typeof value !== "number" && typeof value !== "string") return "Цена уточняется";
   const amount = Number(value);
-  return Number.isFinite(amount) ? `${formatter.format(amount)} ₸` : "Цена уточняется";
+  return Number.isFinite(amount) && amount >= 0 ? `${formatter.format(amount)} ₸` : "Цена уточняется";
 }
 
 function collectFormData() {
@@ -85,20 +87,12 @@ function renderContractorCard(person, index) {
   const categories = Array.isArray(person.categories) ? person.categories : [person.category].filter(Boolean);
   const formats = Array.isArray(person.event_formats) ? person.event_formats : [];
   const languages = Array.isArray(person.languages) ? person.languages : [];
-  const scoreBreakdown = person.score_breakdown && typeof person.score_breakdown === "object" ? person.score_breakdown : {};
-  const scoreLabels = {
-    city: "Город", category: "Категория", available_date: "Дата", budget: "Бюджет",
-    duration: "Длительность", event_format: "Формат", language: "Язык"
-  };
-  const scoreDetails = Object.entries(scoreBreakdown).map(([key, value]) => {
-    const points = Number(value);
-    const formatted = points > 0 ? `+${points}` : String(points);
-    return `${scoreLabels[key] || key}: ${formatted}`;
-  }).join(" · ");
+  const matches = Array.isArray(person.matches) ? person.matches : [];
   const duration = person.max_hours == null ? "Не ограничена присутствием" : `До ${escapeHTML(person.max_hours)} ч`;
   const busySummary = `Занято: ${escapeHTML(person.busy_days_count ?? "—")} из ${escapeHTML(person.busy_window_days ?? 100)} дней, в декабре — ${escapeHTML(person.busy_december_count ?? "—")} из ${escapeHTML(person.december_days ?? 31)}`;
   const description = String(person.description || "Описание не добавлено.");
-  const descriptionMarkup = `<details class="profile-description" open><summary>Описание подрядчика</summary><p>${escapeHTML(description)}</p></details>`;
+  const descriptionMarkup = `<details class="profile-description"><summary>Описание подрядчика</summary><p>${escapeHTML(description)}</p></details>`;
+  const priceText = formatPrice(person.price);
   const pointValue = Number(person.score);
   const pointWord = Math.abs(pointValue) % 10 === 1 && Math.abs(pointValue) % 100 !== 11
     ? "балл"
@@ -108,27 +102,31 @@ function renderContractorCard(person, index) {
   const score = Number.isFinite(pointValue)
     ? `<span class="score"><strong>${escapeHTML(pointValue)} ${pointWord}</strong><small>из ${escapeHTML(person.max_score ?? "—")}</small></span>`
     : "";
-  const synthetic = person.synthetic === true ? `<span class="synthetic-badge">Синтетический профиль</span>` : "";
+  const matchMarkup = matches.map((match) => `<span class="match-chip">${escapeHTML(match)}</span>`).join("");
+  const sourceBadge = person.synthetic === true
+    ? `<span class="synthetic-badge">Синтетический профиль</span>`
+    : `<span class="dataset-badge">Из исходного датасета</span>`;
   return `<article class="contractor-card">
     <div class="card-topline"><span class="rank">ВАРИАНТ #${index + 1}</span>${score}</div>
     <h3 class="contractor-name">${escapeHTML(person.name || "Подрядчик")}</h3>
     <div class="contractor-id">ID ${escapeHTML(person.id || "—")}</div>
-    ${synthetic}
+    ${sourceBadge}
     <div class="card-tags">${categories.map((item) => `<span class="category-tag">${escapeHTML(item)}</span>`).join("")}<span class="location-tag">${escapeHTML(person.city || "Город не указан")}</span></div>
-    <p class="price"><small>от </small>${escapeHTML(formatPrice(person.price))}</p>
+    <p class="price">${priceText === "Цена уточняется" ? "" : "<small>от </small>"}${escapeHTML(priceText)}</p>
+    <div class="recommendation"><div class="recommendation-label">Почему рекомендуем</div><p>${escapeHTML(person.explanation)}</p></div>
+    ${matchMarkup ? `<div class="match-list" aria-label="Совпадения">${matchMarkup}</div>` : ""}
     <div class="detail-list">
       <div class="detail-row"><span>Форматы</span><span>${escapeHTML(formats.join(", ") || "Не указаны")}</span></div>
       <div class="detail-row"><span>Языки</span><span>${escapeHTML(languages.join(", ") || "Не указаны")} · макс. на площадке: ${duration}</span></div>
       <div class="detail-row"><span>Календарь</span><span>${busySummary}</span></div>
-      ${scoreDetails ? `<div class="detail-row"><span>Баллы по условиям</span><span>${escapeHTML(scoreDetails)}</span></div>` : ""}
     </div>
     ${descriptionMarkup}
-    <div class="recommendation"><div class="recommendation-label">Почему рекомендуем</div><p>${escapeHTML(person.explanation || "Подходит под параметры вашего мероприятия.")}</p></div>
   </article>`;
 }
 
 function renderResults(response) {
-  const results = Array.isArray(response.results) ? response.results.slice(0, 3) : [];
+  validateRecommendationResponse(response);
+  const results = response.results;
   if (response.status === "success" && results.length) {
     resultsTitle.textContent = `Мы подобрали ${results.length} ${results.length === 1 ? "вариант" : "варианта"}`;
     resultsSubtitle.textContent = response.message || "Вот подрядчики, которые подходят вашему событию.";
@@ -150,11 +148,16 @@ function renderResults(response) {
 
 function renderError(error) {
   resultsTitle.textContent = "Не удалось получить рекомендации";
-  const detail = error?.message || "Неизвестная ошибка.";
-  const isNetworkError = detail.includes("Failed to fetch") || detail.includes("NetworkError");
-  resultsSubtitle.textContent = isNetworkError
-    ? "Проверьте, что API запущен по адресу 127.0.0.1:8000."
-    : "Проверьте параметры запроса и ответ API.";
+  const messages = {
+    network: "Не удалось связаться с сервисом подбора. Проверьте подключение и повторите запрос.",
+    timeout: "Сервис не успел ответить за 10 секунд. Попробуйте ещё раз чуть позже.",
+    validation: "Проверьте параметры: дата должна быть с 23 сентября по 31 декабря 2026 года, бюджет — больше нуля. Город, формат, категорию и язык выберите из списка.",
+    catalog_unavailable: "Каталог подрядчиков пока недоступен. Организатору демо нужно загрузить данные каталога, затем можно повторить поиск.",
+    invalid_response: "Сервис вернул неполный ответ. Попробуйте повторить поиск чуть позже.",
+    server: "Сервис временно не может выполнить подбор. Попробуйте ещё раз чуть позже."
+  };
+  const detail = messages[error?.code] || messages.server;
+  resultsSubtitle.textContent = "Ваши параметры сохранены.";
   resultsCount.textContent = "";
   resultsContent.innerHTML = `<div class="empty-state"><div class="empty-icon" aria-hidden="true">!</div><div><h3>Что-то пошло не так</h3><p>${escapeHTML(detail)}</p><button class="submit-button" id="retry-button" type="button"><span>Попробовать снова</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></button></div></div>`;
   document.querySelector("#retry-button").addEventListener("click", () => runSearch(lastRequest));

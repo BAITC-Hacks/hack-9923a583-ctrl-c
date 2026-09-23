@@ -1,6 +1,7 @@
 """Import the provided CSV dataset into the local SQLite catalog."""
 
 import argparse
+from contextlib import closing
 import csv
 import json
 from pathlib import Path
@@ -40,7 +41,7 @@ def import_csv(csv_path: Path, db_path: Path = DEFAULT_DB_PATH) -> int:
             "max_hours", "busy_dates", "description",
         )))
 
-    with connect(db_path) as connection:
+    with closing(connect(db_path)) as connection, connection:
         connection.executemany(
             """INSERT OR REPLACE INTO vendors (
                 id, anon_name, categories, city, city_imputed, synthetic,
