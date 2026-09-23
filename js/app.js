@@ -85,12 +85,30 @@ function renderContractorCard(person, index) {
   const categories = Array.isArray(person.categories) ? person.categories : [person.category].filter(Boolean);
   const formats = Array.isArray(person.event_formats) ? person.event_formats : [];
   const languages = Array.isArray(person.languages) ? person.languages : [];
-  const matches = Array.isArray(person.matches) ? person.matches : [];
+  const scoreBreakdown = person.score_breakdown && typeof person.score_breakdown === "object" ? person.score_breakdown : {};
+  const scoreLabels = {
+    city: "Город", category: "Категория", available_date: "Дата", budget: "Бюджет",
+    duration: "Длительность", event_format: "Формат", language: "Язык"
+  };
+  const scoreDetails = Object.entries(scoreBreakdown).map(([key, value]) => {
+    const points = Number(value);
+    const formatted = points > 0 ? `+${points}` : String(points);
+    return `${scoreLabels[key] || key}: ${formatted}`;
+  }).join(" · ");
   const duration = person.max_hours == null ? "Не ограничена присутствием" : `До ${escapeHTML(person.max_hours)} ч`;
-  const score = Number.isFinite(Number(person.score)) ? `<span class="score">Совпадение ${escapeHTML(person.score)}%</span>` : "";
+  const busySummary = `Занято: ${escapeHTML(person.busy_days_count ?? "—")} из ${escapeHTML(person.busy_window_days ?? 100)} дней, в декабре — ${escapeHTML(person.busy_december_count ?? "—")} из ${escapeHTML(person.december_days ?? 31)}`;
+  const description = String(person.description || "Описание не добавлено.");
+  const descriptionMarkup = `<details class="profile-description" open><summary>Описание подрядчика</summary><p>${escapeHTML(description)}</p></details>`;
+  const pointValue = Number(person.score);
+  const pointWord = Math.abs(pointValue) % 10 === 1 && Math.abs(pointValue) % 100 !== 11
+    ? "балл"
+    : Math.abs(pointValue) % 10 >= 2 && Math.abs(pointValue) % 10 <= 4 && (Math.abs(pointValue) % 100 < 12 || Math.abs(pointValue) % 100 > 14)
+      ? "балла"
+      : "баллов";
+  const score = Number.isFinite(pointValue)
+    ? `<span class="score"><strong>${escapeHTML(pointValue)} ${pointWord}</strong><small>из ${escapeHTML(person.max_score ?? "—")}</small></span>`
+    : "";
   const synthetic = person.synthetic === true ? `<span class="synthetic-badge">Синтетический профиль</span>` : "";
-  const matchMarkup = matches.map((match) => `<span class="match-chip">${escapeHTML(match)}</span>`).join("");
-
   return `<article class="contractor-card">
     <div class="card-topline"><span class="rank">ВАРИАНТ #${index + 1}</span>${score}</div>
     <h3 class="contractor-name">${escapeHTML(person.name || "Подрядчик")}</h3>
@@ -100,11 +118,12 @@ function renderContractorCard(person, index) {
     <p class="price"><small>от </small>${escapeHTML(formatPrice(person.price))}</p>
     <div class="detail-list">
       <div class="detail-row"><span>Форматы</span><span>${escapeHTML(formats.join(", ") || "Не указаны")}</span></div>
-      <div class="detail-row"><span>Языки</span><span>${escapeHTML(languages.join(", ") || "Не указаны")}</span></div>
-      <div class="detail-row"><span>Длительность</span><span>${duration}</span></div>
+      <div class="detail-row"><span>Языки</span><span>${escapeHTML(languages.join(", ") || "Не указаны")} · макс. на площадке: ${duration}</span></div>
+      <div class="detail-row"><span>Календарь</span><span>${busySummary}</span></div>
+      ${scoreDetails ? `<div class="detail-row"><span>Баллы по условиям</span><span>${escapeHTML(scoreDetails)}</span></div>` : ""}
     </div>
+    ${descriptionMarkup}
     <div class="recommendation"><div class="recommendation-label">Почему рекомендуем</div><p>${escapeHTML(person.explanation || "Подходит под параметры вашего мероприятия.")}</p></div>
-    ${matchMarkup ? `<div class="match-list" aria-label="Совпадения">${matchMarkup}</div>` : ""}
   </article>`;
 }
 
